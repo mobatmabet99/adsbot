@@ -6,6 +6,8 @@ const promotionSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 1,
+      maxlength: 4096,
     },
     isActive: {
       type: Boolean,

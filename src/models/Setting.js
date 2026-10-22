@@ -11,12 +11,20 @@ const settingSchema = new mongoose.Schema(
       min: 0,
       default: 15,
       required: true,
+      validate: {
+        validator: Number.isInteger,
+        message: 'delayMin must be an integer number of seconds',
+      },
     },
     delayMax: {
       type: Number,
       min: 0,
       default: 30,
       required: true,
+      validate: {
+        validator: Number.isInteger,
+        message: 'delayMax must be an integer number of seconds',
+      },
     },
     cronSchedule: {
       type: String,

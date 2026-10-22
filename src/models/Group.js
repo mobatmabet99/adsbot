@@ -7,11 +7,14 @@ const groupSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
+      match: /^-?\d+$/,
     },
     name: {
       type: String,
       required: true,
       trim: true,
+      minlength: 1,
+      maxlength: 255,
     },
     status: {
       type: String,

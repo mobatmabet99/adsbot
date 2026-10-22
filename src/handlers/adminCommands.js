@@ -77,8 +77,8 @@ export function registerAdminCommands(bot) {
 
   registerAdminCommand(bot, 'promo_add', adminIds, async (ctx) => {
     const text = getCommandArgs(ctx);
-    if (!text) {
-      await ctx.reply('Format: /promo_add <teks iklan>');
+    if (!text || text.length > 4096) {
+      await ctx.reply('Format: /promo_add <teks iklan 1-4096 karakter>');
       return;
     }
 
@@ -88,8 +88,8 @@ export function registerAdminCommands(bot) {
 
   registerAdminCommand(bot, 'addpromo', adminIds, async (ctx) => {
     const text = getCommandArgs(ctx);
-    if (!text) {
-      await ctx.reply('Format: /addpromo <teks>');
+    if (!text || text.length > 4096) {
+      await ctx.reply('Format: /addpromo <teks 1-4096 karakter>');
       return;
     }
 
@@ -191,7 +191,7 @@ export function registerAdminCommands(bot) {
     const chatId = parseGroupChatId(rawChatId.trim());
     const name = nameParts.join('|').trim();
 
-    if (!chatId || !name) {
+    if (!chatId || !name || name.length > 255) {
       await ctx.reply('Format: /addgroup <chatId> | <nama>');
       return;
     }
@@ -284,6 +284,8 @@ export function registerAdminCommands(bot) {
     const delayMax = Number(maxText);
 
     if (
+      !minText ||
+      !maxText ||
       extra.length > 0 ||
       !Number.isInteger(delayMin) ||
       !Number.isInteger(delayMax) ||

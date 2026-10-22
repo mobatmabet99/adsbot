@@ -7,16 +7,34 @@ function randomDelayMs(delayMin, delayMax) {
   return (Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin) * 1000;
 }
 
+function shuffle(items) {
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [
+      shuffled[randomIndex],
+      shuffled[index],
+    ];
+  }
+
+  return shuffled;
+}
+
 const delay = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function isBotRemovedError(error) {
-  return (
-    error?.error_code === 403 &&
-    /bot was kicked|bot is not a member|bot was not a member/i.test(
-      error.description ?? '',
-    )
-  );
+  const errorCode = error?.error_code;
+  const description = `${error?.description ?? ''} ${error?.message ?? ''}`;
+  const isForbidden = errorCode === 403 && /\bforbidden\b/i.test(description);
+  const wasRemoved =
+    errorCode === 403 &&
+    /kicked|blocked|not a member|was removed/i.test(description);
+  const chatNotFound =
+    (errorCode === 400 || errorCode === 403) && /chat not found/i.test(description);
+
+  return isForbidden || wasRemoved || chatNotFound;
 }
 
 async function sendPromotions(bot, state) {
@@ -33,17 +51,24 @@ async function sendPromotions(bot, state) {
     ]);
 
     if (promotions.length === 0 || groups.length === 0) return;
+    if (
+      !Number.isInteger(setting.delayMin) ||
+      !Number.isInteger(setting.delayMax) ||
+      setting.delayMin < 0 ||
+      setting.delayMax < setting.delayMin
+    ) {
+      throw new Error('Invalid delayMin/delayMax in global bot settings');
+    }
 
+    const shuffledPromotions = shuffle(promotions);
     let deliveryCount = 0;
 
     for (const [index, group] of groups.entries()) {
-      const promotion = promotions[Math.floor(Math.random() * promotions.length)];
-      let sent = false;
+      const promotion = shuffledPromotions[index % shuffledPromotions.length];
 
       try {
         await bot.api.sendMessage(group.chatId, promotion.text);
         deliveryCount += 1;
-        sent = true;
       } catch (error) {
         console.error(
           `Failed to send promotion ${promotion.id} to group ${group.chatId}:`,
@@ -51,26 +76,38 @@ async function sendPromotions(bot, state) {
         );
 
         if (isBotRemovedError(error)) {
-          await Group.updateOne(
-            { _id: group._id },
-            { $set: { status: 'KICKED', promotionsEnabled: false } },
-          );
-          console.info(`Marked group ${group.chatId} as KICKED after Telegram API error`);
+          try {
+            await Group.updateOne(
+              { _id: group._id },
+              { $set: { status: 'KICKED', promotionsEnabled: false } },
+            );
+            console.info(
+              `Marked group ${group.chatId} as KICKED after Telegram API error`,
+            );
+          } catch (updateError) {
+            console.error(
+              `Failed to mark group ${group.chatId} as KICKED:`,
+              updateError,
+            );
+          }
         }
+
+        if (index < groups.length - 1) {
+          await delay(randomDelayMs(setting.delayMin, setting.delayMax));
+        }
+        continue;
       }
 
-      if (sent) {
-        try {
-          await Group.updateOne(
-            { _id: group._id },
-            { $set: { lastSentAt: new Date() } },
-          );
-        } catch (error) {
-          console.error(
-            `Failed to update lastSentAt for group ${group.chatId}:`,
-            error,
-          );
-        }
+      try {
+        await Group.updateOne(
+          { _id: group._id },
+          { $set: { lastSentAt: new Date() } },
+        );
+      } catch (error) {
+        console.error(
+          `Failed to update lastSentAt for group ${group.chatId}:`,
+          error,
+        );
       }
 
       if (index < groups.length - 1) {
