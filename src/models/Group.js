@@ -16,6 +16,15 @@ const groupSchema = new mongoose.Schema(
       minlength: 1,
       maxlength: 255,
     },
+    title: {
+      type: String,
+      trim: true,
+      maxlength: 255,
+    },
+    promotionConsent: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ['ACTIVE', 'KICKED'],

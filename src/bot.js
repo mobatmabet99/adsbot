@@ -14,6 +14,46 @@ if (!botToken || botToken.startsWith('replace_with_')) {
 const bot = new Bot(botToken);
 let scheduler;
 
+bot.on('my_chat_member', async (ctx) => {
+  if (!isGroupChat(ctx.chat)) return;
+
+  const { status } = ctx.myChatMember.new_chat_member;
+  const chatId = String(ctx.chat.id);
+
+  if (status === 'left' || status === 'kicked') {
+    await Group.findOneAndUpdate(
+      { chatId },
+      {
+        $set: {
+          name: ctx.chat.title,
+          status: 'KICKED',
+          promotionsEnabled: false,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    console.info(`Marked group ${chatId} as KICKED`);
+    return;
+  }
+
+  if (status === 'member' || status === 'administrator') {
+    await Group.findOneAndUpdate(
+      { chatId: String(ctx.chat.id) },
+      {
+        $set: {
+          promotionConsent: true,
+          title: ctx.chat.title,
+          name: ctx.chat.title,
+          status: 'ACTIVE',
+        },
+        $setOnInsert: { promotionsEnabled: false },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    console.log(`Group ${chatId} registered automatically`);
+  }
+});
+
 function isGroupChat(chat) {
   return chat.type === 'group' || chat.type === 'supergroup';
 }
@@ -57,44 +97,6 @@ async function setGroupPromotionConsent(ctx, enabled) {
 
 bot.command('promos_on', (ctx) => setGroupPromotionConsent(ctx, true));
 bot.command('promos_off', (ctx) => setGroupPromotionConsent(ctx, false));
-
-bot.on('my_chat_member', async (ctx) => {
-  const update = ctx.myChatMember;
-  if (!isGroupChat(update.chat)) return;
-
-  const { status } = update.new_chat_member;
-  const chatId = String(update.chat.id);
-
-  if (status === 'left' || status === 'kicked') {
-    await Group.findOneAndUpdate(
-      { chatId },
-      {
-        $set: {
-          name: update.chat.title,
-          status: 'KICKED',
-          promotionsEnabled: false,
-        },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-    console.info(`Marked group ${chatId} as KICKED`);
-    return;
-  }
-
-  if (status === 'member' || status === 'administrator') {
-    await Group.findOneAndUpdate(
-      { chatId },
-      {
-        $set: {
-          name: update.chat.title,
-          status: 'ACTIVE',
-        },
-        $setOnInsert: { promotionsEnabled: false },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-  }
-});
 
 bot.catch((error) => {
   console.error('Telegram bot update failed:', error);
