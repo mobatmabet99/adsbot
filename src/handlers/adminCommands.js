@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { GrammyError } from 'grammy';
 import mongoose from 'mongoose';
 import Group from '../models/Group.js';
 import Promotion from '../models/Promotion.js';
@@ -161,7 +162,18 @@ export function registerAdminCommands(bot) {
       return;
     }
 
-    const chat = await bot.api.getChat(chatId);
+    let chat;
+    try {
+      chat = await bot.api.getChat(chatId);
+    } catch (error) {
+      if (!(error instanceof GrammyError)) throw error;
+
+      await ctx.reply(
+        'Grup tidak ditemukan atau bot belum dimasukkan ke grup tersebut.',
+      );
+      return;
+    }
+
     if (chat.type !== 'group' && chat.type !== 'supergroup') {
       await ctx.reply('Chat tersebut bukan grup atau supergrup Telegram.');
       return;
