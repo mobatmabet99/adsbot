@@ -1,0 +1,21 @@
+{
+  "name": "telegram-auto-promo-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram bot for automated promotions",
+  "main": "src/bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "grammy": "^1.37.0",
+    "mongoose": "^8.18.0",
+    "node-cron": "^4.2.1"
+  }
+}
